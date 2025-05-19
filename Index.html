@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HGZY Win Go Game Big/Small Predictor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            background: linear-gradient(to bottom, #FFFFFF, #FFF9C4);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-weight: bold;
+        }
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 400px;
+            height: 100%;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+        .centered-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            gap: 10px;
+            border: 2px solid #000;
+            border-radius: 8px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        h2 {
+            margin: 0;
+            color: #333;
+            font-size: 26px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+        .timer {
+            font-size: 20px;
+            color: #d63384;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+        .timer.warning {
+            color: #dc3545;
+            font-size: 18px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .result-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 8px 0;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px) scale(0.8);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .result-row.animate {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        .result-row::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: #ccc;
+        }
+        #popupResults {
+            max-height: 50vh;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        #historyBar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.9);
+            flex-direction: row;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+        .history-item {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .history-win {
+            background-color: #28a745;
+        }
+        .history-loss {
+            background-color: #dc3545;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100px;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: scale(0.9);
+            transition: transform 0.1s;
+        }
+        .big-btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        .big-btn:hover {
+            background: linear-gradient(135deg, #0056b3, #003d82);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        .big-btn.selected {
+            background: linear-gradient(135deg, #808080, #6c757d) !important;
+            box-shadow: 0 0 12px rgba(128, 128, 128, 0.6);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        .small-btn {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        .small-btn:hover {
+            background: linear-gradient(135deg, #c82333, #b21f2d);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        .small-btn.selected {
+            background: linear-gradient(135deg, #808080, #6c757d) !important;
+            box-shadow: 0 0 12px rgba(128, 128, 128, 0.6);
+            transition: background 0s, transform 0.2s, box-shadow 0.2s;
+        }
+        #startBtn {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+            width: auto;
+            margin: 10px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        #startBtn:hover {
+            background: linear-gradient(135deg, #218838, #1c7430);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        #winBtn, #lossBtn {
+            width: auto;
+            margin: 5px;
+        }
+        #winBtn {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        #winBtn:hover {
+            background: linear-gradient(135deg, #138496, #0f6b7a);
+        }
+        #lossBtn {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        #lossBtn:hover {
+            background: linear-gradient(135deg, #5a6268, #495057);
+        }
+        #prediction {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border: 4px solid #007bff;
+            padding: 15px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        #error {
+            color: #dc3545;
+            font-size: 14px;
+            margin: 10px 0;
+            display: none;
+            font-weight: bold;
+        }
+        #tracker, #gameplayCounter {
+            font-size: 16px;
+            color: #333;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .positive-benefit {
+            color: #28a745;
+        }
+        .negative-benefit {
+            color: #dc3545;
+        }
+        #goAppBtn, #resetBtn, #menuBtn, #dotMenuBtn {
+            position: fixed;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            z-index: 1000;
+            font-weight: bold;
+        }
+        #goAppBtn {
+            bottom: 90px;
+            right: 20px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+        #goAppBtn:hover {
+            background: linear-gradient(135deg, #0056b3, #003d82);
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        #goAppBtn:active {
+            transform: scale(0.95);
+        }
+        #resetBtn {
+            bottom: 90px;
+            left: 20px;
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+        #resetBtn:hover {
+            background: linear-gradient(135deg, #c82333, #b21f2d);
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+        #resetBtn:active {
+            transform: scale(0.95);
+        }
+        #menuBtn {
+            top: 20px;
+            right: 10px;
+            background-color: transparent;
+            color: #333;
+            padding: 14px 20px;
+            font-size: 28px;
+        }
+        #menuBtn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        #menuBtn:active {
+            transform: scale(0.95);
+        }
+        #dotMenuBtn {
+            top: 20px;
+            left: 10px;
+            background-color: transparent;
+            color: #333;
+            padding: 14px 20px;
+            font-size: 28px;
+        }
+        #dotMenuBtn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        #dotMenuBtn:active {
+            transform: scale(0.95);
+        }
+        .hidden {
+            display: none;
+        }
+        .popup {
+            position: fixed;
+            left: 50%;
+            background: #fff; /* White background */
+            color: #333; /* Dark text for readability */
+            border: 2px solid #007bff; /* Blue border */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Simple shadow */
+            z-index: 2000;
+            text-align: center;
+            transform: translate(-50%, -50%) scale(0.8);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            font-weight: bold;
+        }
+        .popup p {
+            font-weight: bold;
+            margin: 0 0 10px;
+        }
+        .popup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .menu-popup, .dot-menu-popup {
+            top: 80px;
+            transform: translateX(-50%) scale(0.8);
+            width: 90%;
+            max-width: 300px;
+        }
+        .menu-popup.show, .dot-menu-popup.show {
+            transform: translateX(-50%) scale(1);
+        }
+        .center-popup {
+            top: 50%;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+            max-width: 300px;
+        }
+        .warning-popup {
+            top: 50%;
+            width: 90%;
+            max-width: 300px;
+            padding: 15px;
+            transition: opacity 0.3s ease;
+        }
+        .warning-popup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .popup-content {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .popup button {
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #333;
+            padding: 10px 16px;
+            width: 100%;
+            font-size: 14px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            font-weight: bold;
+        }
+        .popup button:hover {
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        .popup button:active {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            display: none;
+        }
+        .disable-interaction {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .stats-label {
+            font-size: 18px;
+            color: #333;
+            font-weight: bold;
+            text-align: center;
+            margin: 5px 0;
+        }
+        .ad-container {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 50px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            background: #fff;
+            z-index: 1000;
+            text-align: center;
+            overflow: hidden;
+        }
+        @media (max-width: 400px) {
+            .container {
+                padding: 15px;
+            }
+            .centered-content {
+                gap: 8px;
+                padding: 10px;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 14px;
+                width: 90px;
+                font-weight: bold;
+            }
+            .big-btn, .small-btn {
+                font-size: 14px;
+            }
+            h2 {
+                font-size: 22px;
+            }
+            #goAppBtn, #resetBtn, #menuBtn, #dotMenuBtn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            #menuBtn, #dotMenuBtn {
+                font-size: 24px;
+                padding: 12px 16px;
+            }
+            #menuBtn {
+                right: 8px;
+            }
+            #dotMenuBtn {
+                left: 8px;
+            }
+            #goAppBtn {
+                bottom: 80px;
+            }
+            #resetBtn {
+                bottom: 80px;
+            }
+            #prediction {
+                font-size: 20px;
+                padding: 12px;
+                border-width: 3px;
+            }
+            #historyBar {
+                padding: 8px;
+                gap: 6px;
+            }
+            .history-item {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+            .menu-popup, .dot-menu-popup {
+                top: 60px;
+                width: 90%;
+                max-width: 280px;
+            }
+            .center-popup {
+                top: 50%;
+                width: 90%;
+                max-width: 280px;
+            }
+            .warning-popup {
+                width: 90%;
+                max-width: 280px;
+                padding: 12px;
+            }
+            .popup button {
+                padding: 8px 12px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            .stats-label {
+                font-size: 16px;
+            }
+            #popupResults {
+                max-height: 40vh;
+            }
+            .ad-container {
+                width: 300px;
+                height: 50px;
+                border: 2px solid #007bff;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <div class="container hidden" role="main" id="mainContainer">
+        <div class="centered-content">
+            <h2 id="gameTitle">Win-Go 1 Minute</h2>
+            <div id="timer" class="timer" role="timer">Time: 60s</div>
+            <div id="prediction" role="status">🤖শুরু করতে "Start AI Prediction" চাপুন!</div>
+            <div id="historyBar" class="hidden" role="region" aria-label="Win/Loss History"></div>
+            <button id="startBtn" onclick="startPrediction()" aria-label="Start AI Prediction">Start AI Prediction</button>
+            <div id="outcomeButtons" class="hidden">
+                <button id="winBtn" onclick="trackResult('win')" aria-label="Record Win">Win</button>
+                <button id="lossBtn" onclick="trackResult('loss')" aria-label="Record Loss">Loss</button>
+            </div>
+            <div id="tracker" class="hidden" role="status">Benefit: +0.0৳</div>
+            <div id="gameplayCounter" class="hidden" role="status">Total Games played: 0</div>
+        </div>
+        <div id="error" role="alert"></div>
+    </div>
+    <div id="resetStats" class="stats-label hidden" style="bottom: 120px; left: 20px; position: fixed;">Win: 0</div>
+    <button id="resetBtn" class="hidden" onclick="showResetPopup()" aria-label="Reset App">রিসেট❎</button>
+    <div id="appStats" class="stats-label hidden" style="bottom: 120px; right: 20px; position: fixed;">Loss: 0</div>
+    <button id="goAppBtn" class="hidden" onclick="showGamePopup()" aria-label="Open Win-Go App">App-এ</button>
+    <button id="menuBtn" class="hidden" onclick="showMenuPopup()" aria-label="Open Menu">☰</button>
+    <button id="dotMenuBtn" class="hidden" onclick="showDotMenuPopup()" aria-label="Open Dot Menu">⋮</button>
+    <!-- Ad Container -->
+    <div class="ad-container">
+        <script type="text/javascript">
+            atOptions = {
+                'key': 'a3ae2ca3f32b6f3bcd8f3e118004233f',
+                'format': 'iframe',
+                'height': 50,
+                'width': 320,
+                'params': {}
+            };
+        </script>
+        <script type="text/javascript" src="//www.highperformanceformat.com/a3ae2ca3f32b6f3bcd8f3e118004233f/invoke.js"></script>
+    </div>
+
+    <script>
+        // Initialize state
+        let defaultState = {
+            results: Array(8).fill(null),
+            benefit: 0,
+            lastPrediction: null,
+            gameMode: '1M',
+            consecutiveLosses: 0,
+            lastBetAmount: 0,
+            cumulativeLoss: 0,
+            outcomeHistory: [],
+            isPredicting: false,
+            gameplayCount: 0,
+            predictionStreak: 0,
+            currentPredictionType: null,
+            lifetimeWins: 0,
+            lifetimeProfit: 0,
+            lifetimeGamesWon: 0,
+            lifetimeLosses: 0,
+            lifetimeGamesLost: 0
+        };
+        let state;
+        try {
+            state = JSON.parse(localStorage.getItem('appState')) || defaultState;
+            state.benefit = isNaN(parseFloat(state.benefit)) ? 0 : parseFloat(state.benefit);
+            state.lastBetAmount = isNaN(parseFloat(state.lastBetAmount)) ? 0 : parseFloat(state.lastBetAmount);
+            state.cumulativeLoss = isNaN(parseFloat(state.cumulativeLoss)) ? 0 : parseFloat(state.cumulativeLoss);
+            state.consecutiveLosses = isNaN(parseInt(state.consecutiveLosses)) ? 0 : parseInt(state.consecutiveLosses);
+            state.outcomeHistory = Array.isArray(state.outcomeHistory) ? state.outcomeHistory.filter(o => ['win', 'loss'].includes(o)) : [];
+            state.isPredicting = !!state.isPredicting;
+            state.results = Array.isArray(state.results) && state.results.length === 8 ? state.results : Array(8).fill(null);
+            state.gameplayCount = isNaN(parseInt(state.gameplayCount)) ? 0 : parseInt(state.gameplayCount);
+            state.predictionStreak = isNaN(parseInt(state.predictionStreak)) ? 0 : parseInt(state.predictionStreak);
+            state.currentPredictionType = ['Big', 'Small'].includes(state.currentPredictionType) ? state.currentPredictionType : null;
+            state.lifetimeWins = isNaN(parseInt(state.lifetimeWins)) ? 0 : parseInt(state.lifetimeWins);
+            state.lifetimeProfit = isNaN(parseFloat(state.lifetimeProfit)) ? 0 : parseFloat(state.lifetimeProfit);
+            state.lifetimeGamesWon = isNaN(parseInt(state.lifetimeGamesWon)) ? 0 : parseInt(state.lifetimeGamesWon);
+            state.lifetimeLosses = isNaN(parseInt(state.lifetimeLosses)) ? 0 : parseInt(state.lifetimeLosses);
+            state.lifetimeGamesLost = isNaN(parseInt(state.lifetimeGamesLost)) ? 0 : parseInt(state.lifetimeGamesLost);
+        } catch (e) {
+            console.error('Failed to parse appState:', e);
+            state = defaultState;
+            alert('Error loading saved data. Starting fresh.');
+        }
+        let { results, benefit, lastPrediction, gameMode, consecutiveLosses, lastBetAmount, cumulativeLoss, outcomeHistory, isPredicting, gameplayCount, predictionStreak, currentPredictionType, lifetimeWins, lifetimeProfit, lifetimeGamesWon, lifetimeLosses, lifetimeGamesLost } = state;
+        let activityLog = JSON.parse(localStorage.getItem('activityLog')) || [];
+        let gameDuration = gameMode === '30S' ? 30 : 60;
+
+        // Save state
+        function saveState() {
+            try {
+                state = { results, benefit, lastPrediction, gameMode, consecutiveLosses, lastBetAmount, cumulativeLoss, outcomeHistory, isPredicting, gameplayCount, predictionStreak, currentPredictionType, lifetimeWins, lifetimeProfit, lifetimeGamesWon, lifetimeLosses, lifetimeGamesLost };
+                localStorage.setItem('appState', JSON.stringify(state));
+                logActivity('Save State', `Saved: results=${results}, benefit=${benefit}, cumulativeLoss=${cumulativeLoss}, gameplayCount=${gameplayCount}, predictionStreak=${predictionStreak}, currentPredictionType=${currentPredictionType}, lifetimeWins=${lifetimeWins}, lifetimeProfit=${lifetimeProfit}, lifetimeGamesWon=${lifetimeGamesWon}, lifetimeLosses=${lifetimeLosses}, lifetimeGamesLost=${lifetimeGamesLost}`);
+            } catch (e) {
+                console.error('Failed to save state:', e);
+                logActivity('Save State Error', e.message);
+                alert('Error saving data. Please try again.');
+            }
+        }
+
+        // Log activities
+        function logActivity(action, details) {
+            try {
+                const now = new Date().toLocaleString('en-US', { hour12: false });
+                activityLog.push(`[${now}] ${action}: ${details}`);
+                localStorage.setItem('activityLog', JSON.stringify(activityLog));
+            } catch (e) {
+                console.error('Failed to log activity:', e);
+            }
+        }
+
+        // Play sound
+        function playSound(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                let oscillator, gainNode, duration, modulator;
+
+                gainNode = ctx.createGain();
+                gainNode.connect(ctx.destination);
+                gainNode.gain.setValueAtTime(0, ctx.currentTime);
+
+                switch (type) {
+                    case 'start':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+                        oscillator.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.2);
+                        duration = 0.2;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                        break;
+                    case 'win':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(700, ctx.currentTime);
+                        modulator = ctx.createOscillator();
+                        modulator.type = 'sine';
+                        modulator.frequency.setValueAtTime(5, ctx.currentTime);
+                        const modGain = ctx.createGain();
+                        modGain.gain.setValueAtTime(50, ctx.currentTime);
+                        modulator.connect(modGain);
+                        modGain.connect(oscillator.frequency);
+                        modulator.start();
+                        duration = 0.3;
+                        gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.02);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                        break;
+                    case 'loss':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+                        oscillator.frequency.linearRampToValueAtTime(300, ctx.currentTime + 0.25);
+                        modulator = ctx.createOscillator();
+                        modulator.type = 'sine';
+                        modulator.frequency.setValueAtTime(4, ctx.currentTime);
+                        const modGainLoss = ctx.createGain();
+                        modGainLoss.gain.setValueAtTime(20, ctx.currentTime);
+                        modulator.connect(modGainLoss);
+                        modGainLoss.connect(oscillator.frequency);
+                        modulator.start();
+                        duration = 0.25;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                        break;
+                    case 'click':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(900, ctx.currentTime);
+                        duration = 0.1;
+                        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                        break;
+                    case 'reset':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(250, ctx.currentTime);
+                        duration = 0.2;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                        break;
+                    case 'goapp':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(500, ctx.currentTime);
+                        oscillator.frequency.setValueAtTime(600, ctx.currentTime + 0.075);
+                        duration = 0.15;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                        break;
+                    case 'close':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(550, ctx.currentTime);
+                        duration = 0.12;
+                        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                        break;
+                    case 'menu':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(650, ctx.currentTime);
+                        oscillator.frequency.setValueAtTime(700, ctx.currentTime + 0.065);
+                        duration = 0.13;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.13);
+                        break;
+                    case 'welcome':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(500, ctx.currentTime);
+                        oscillator.frequency.linearRampToValueAtTime(650, ctx.currentTime + 0.25);
+                        duration = 0.25;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                        break;
+                    case 'submit':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+                        modulator = ctx.createOscillator();
+                        modulator.type = 'sine';
+                        modulator.frequency.setValueAtTime(6, ctx.currentTime);
+                        const modGainSubmit = ctx.createGain();
+                        modGainSubmit.gain.setValueAtTime(30, ctx.currentTime);
+                        modulator.connect(modGainSubmit);
+                        modGainSubmit.connect(oscillator.frequency);
+                        modulator.start();
+                        duration = 0.18;
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+                        break;
+                    case 'warning':
+                        oscillator = ctx.createOscillator();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(700, ctx.currentTime);
+                        duration = 0.15;
+                        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                        break;
+                    default:
+                        return;
+                }
+                oscillator.connect(gainNode);
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + duration);
+                if (modulator) modulator.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.warn('Sound playback failed:', e);
+            }
+        }
+
+        // Toggle background interaction
+        function toggleBackgroundInteraction(disable) {
+            const overlay = document.getElementById('overlay');
+            if (!overlay) {
+                console.error('Overlay not found');
+                return;
+            }
+            overlay.style.display = disable ? 'block' : 'none';
+            document.querySelectorAll('button:not(.popup button)').forEach(btn => {
+                btn.classList.toggle('disable-interaction', disable);
+            });
+        }
+
+        // Update history bar
+        function updateHistoryBar() {
+            const historyBar = document.getElementById('historyBar');
+            if (!historyBar) {
+                console.error('History bar not found');
+                return;
+            }
+            historyBar.classList.remove('hidden');
+            historyBar.innerHTML = outcomeHistory.length ? '' : '<p>কোনো History নেই! </p>';
+            outcomeHistory.slice(0, 8).forEach(outcome => {
+                if (!['win', 'loss'].includes(outcome)) return;
+                const item = document.createElement('div');
+                item.className = `history-item history-${outcome}`;
+                item.innerText = outcome === 'win' ? 'W' : 'L';
+                item.setAttribute('aria-label', outcome === 'win' ? 'Win' : 'Loss');
+                historyBar.appendChild(item);
+            });
+            logActivity('UI Update', `History: ${outcomeHistory}`);
+        }
+
+        // Update stats labels
+        function updateStatsLabels() {
+            const resetStats = document.getElementById('resetStats');
+            const appStats = document.getElementById('appStats');
+            if (resetStats) {
+                resetStats.innerText = `Win: ${lifetimeGamesWon}`;
+                resetStats.classList.remove('hidden');
+            }
+            if (appStats) {
+                appStats.innerText = `Loss: ${lifetimeGamesLost}`;
+                appStats.classList.remove('hidden');
+            }
+        }
+
+        // Warning popup for result selection
+        function showResultWarningPopup() {
+            playSound('warning');
+            const popup = document.createElement('div');
+            popup.className = 'popup warning-popup';
+            popup.innerHTML = `
+                <p>Please select 8 results.</p>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.classList.add('show'), 10);
+            setTimeout(() => {
+                popup.classList.remove('show');
+                setTimeout(() => popup.remove(), 300);
+            }, 1000);
+            logActivity('Popup', 'Showed result warning for 1 second');
+        }
+
+        // Welcome popup
+        function showWelcomePopup() {
+            playSound('welcome');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>এই অ্যাপে Win Go এর Big/Small এর Prediction দেওয়া হয়।<br>
+                অনেক সময় ভুলও হবে❗ কিন্তু যদি আপনারা নিয়ম মেনে খেলেন তাহলে আশা করি লাভে থাকেন 🤗<br><br>
+                লোভে পড়ে টাকা হেরে গেলে App Developer দায়ি নয়⚠️<br><br>
+                🟠Ok ক্লিক করার মাধ্যমে আপনি সব নিয়মে সম্মতি দিচ্ছেন</p>
+                <div class="popup-content">
+                    <button onclick="confirmWelcome(this)">OK</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed welcome');
+        }
+
+        // Confirm welcome
+        function confirmWelcome(button) {
+            playSound('close');
+            try {
+                localStorage.setItem('welcomeShown', 'true');
+            } catch (e) {
+                console.error('Failed to set welcomeShown:', e);
+            }
+            closePopup(button);
+            showMainScreen();
+        }
+
+        // Show main screen
+        function showMainScreen() {
+            const elements = {
+                mainContainer: document.getElementById('mainContainer'),
+                resetBtn: document.getElementById('resetBtn'),
+                goAppBtn: document.getElementById('goAppBtn'),
+                menuBtn: document.getElementById('menuBtn'),
+                dotMenuBtn: document.getElementById('dotMenuBtn'),
+                resetStats: document.getElementById('resetStats'),
+                appStats: document.getElementById('appStats')
+            };
+            if (Object.values(elements).some(el => !el)) {
+                alert('Error: Main screen elements missing.');
+                return;
+            }
+            Object.values(elements).forEach(el => el.classList.remove('hidden'));
+            initializeAppUI();
+            logActivity('UI', 'Showed main screen');
+        }
+
+        // Reset popup
+        function showResetPopup() {
+            playSound('reset');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>আপনি নিশ্চিত?</p>
+                <div class="popup-content">
+                    <button onclick="confirmReset()">হ্যা!</button>
+                    <button onclick="closePopup(this)">না!</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed reset');
+        }
+
+        // Confirm reset
+        function confirmReset() {
+            playSound('reset');
+            resetApp();
+            closePopup(document.querySelector('.popup button:last-child'));
+            logActivity('Reset', 'Confirmed');
+        }
+
+        // Dot menu popup
+        function showDotMenuPopup() {
+            playSound('menu');
+            const popup = document.createElement('div');
+            popup.className = 'popup dot-menu-popup';
+            popup.innerHTML = `
+                <p>Options</p>
+                <div class="popup-content">
+                    <button onclick="showLifetimeWins()" aria-label="Lifetime Win">Lifetime Win</button>
+                    <button onclick="showLifetimeLosses()" aria-label="Lifetime Loss">Lifetime Loss</button>
+                    <button onclick="openJoinTelegram()" aria-label="Join Telegram">Join Telegram</button>
+                    <button onclick="openOfficialGroup()" aria-label="Official Group">Official Group</button>
+                    <button onclick="openSupport()" aria-label="Support">Support</button>
+                    <button onclick="openReview()" aria-label="Review">Review</button>
+                    <button onclick="closePopup(this)" aria-label="Close">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed dot menu');
+        }
+
+        // Show lifetime wins
+        function showLifetimeWins() {
+            playSound('menu');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>🤖আপনি ${lifetimeGamesWon} বার গেম জিতেছেন!<br><br>😎মোট ${lifetimeProfit.toFixed(1)} ৳ টাকা লাভ করছেন!</p>
+                <div class="popup-content">
+                    <button onclick="closePopup(this)">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Wins', `Displayed lifetime wins: gamesWon=${lifetimeGamesWon}, profit=${lifetimeProfit}`);
+        }
+
+        // Show lifetime losses
+        function showLifetimeLosses() {
+            playSound('menu');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>🤖আপনি ${lifetimeGamesLost} বার গেম হেরেছেন!</p>
+                <div class="popup-content">
+                    <button onclick="closePopup(this)">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Losses', `Displayed lifetime losses: gamesLost=${lifetimeGamesLost}`);
+        }
+
+        // Open Telegram links
+        function openJoinTelegram() {
+            playSound('telegram');
+            window.open('https://t.me/Deb_wingo_ai', '_blank');
+            logActivity('Telegram Link', 'Opened Join Telegram');
+        }
+
+        function openOfficialGroup() {
+            playSound('telegram');
+            window.open('https://t.me/wingo_ai_Deb', '_blank');
+            logActivity('Telegram Link', 'Opened Official Group');
+        }
+
+        function openSupport() {
+            playSound('telegram');
+            window.open('https://t.me/wingo_ai_Deb', '_blank');
+            logActivity('Telegram Link', 'Opened Support');
+        }
+
+        function openReview() {
+            playSound('telegram');
+            window.open('https://t.me/wingo_ai_Deb', '_blank');
+            logActivity('Telegram Link', 'Opened Review');
+        }
+
+        // Menu popup
+        function showMenuPopup() {
+            playSound('menu');
+            const popup = document.createElement('div');
+            popup.className = 'popup menu-popup';
+            popup.innerHTML = `
+                <p>Menu</p>
+                <div class="popup-content">
+                    <button onclick="setGameMode('30S', this)">Win-Go 30 second</button>
+                    <button onclick="setGameMode('1M', this)">Win-Go 1 minute</button>
+                    <button onclick="closePopup(this)">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed menu');
+        }
+
+        // Set game mode
+        function setGameMode(mode, button) {
+            playSound('menu');
+            gameMode = mode;
+            gameDuration = mode === '30S' ? 30 : 60;
+            const titleDiv = document.getElementById('gameTitle');
+            if (titleDiv) titleDiv.innerText = `Win-Go ${mode === '30S' ? '30 Second' : '1 Minute'}`;
+            updateHistoryBar();
+            updateTimer();
+            saveState();
+            closePopup(button);
+            logActivity('Game Mode', `Set to ${mode}`);
+        }
+
+        // Game selection popup
+        function showGamePopup() {
+            playSound('goapp');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>আপনি কোন Game খেলেন? </p>
+                <div class="popup-content">
+                    <button onclick="openDKWin()">DK Win</button>
+                    <button onclick="openHGZY()">HGZY</button>
+                    <button onclick="closePopup(this)">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed game selection');
+        }
+
+        // Congrats popup
+        function showCongratsPopup() {
+            playSound('win');
+            const popup = document.createElement('div');
+            popup.className = 'popup center-popup';
+            popup.innerHTML = `
+                <p>🤖অভিনন্দন!🎉</p>
+                <div class="popup-content">
+                    <button onclick="closePopup(this)">বন্ধ করুন</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            toggleBackgroundInteraction(true);
+            setTimeout(() => popup.classList.add('show'), 10);
+            logActivity('Popup', 'Showed congrats');
+        }
+
+        // Close popup
+        function closePopup(button) {
+            playSound('close');
+            const popup = button.closest('.popup');
+            if (popup) {
+                popup.classList.remove('show');
+                setTimeout(() => popup.remove(), 300);
+            }
+            toggleBackgroundInteraction(false);
+            logActivity('Popup', 'Closed');
+        }
+
+        // Open DK Win
+        function openDKWin() {
+            playSound('goapp');
+            window.open(`https://dkwin9.com/#/saasLottery/WinGo?gameCode=WinGo_${gameMode}&lottery=WinGo`, '_blank');
+            closePopup(document.querySelector('.popup button:last-child'));
+            logActivity('Game Selection', `Opened DK Win (${gameMode})`);
+        }
+
+        // Open HGZY
+        function openHGZY() {
+            playSound('goapp');
+            window.open('https://hgzy.app/game/', '_blank');
+            closePopup(document.querySelector('.popup button:last-child'));
+            logActivity('Game Selection', 'Opened HGZY');
+        }
+
+        // Select result
+        function selectResult(index, value) {
+            try {
+                playSound('click');
+                results[index] = value;
+                updatePopupButtonStates();
+                saveState();
+                logActivity('Select', `Row ${index + 1} set to ${value}`);
+            } catch (e) {
+                console.error('Select result error:', e);
+                alert('Error selecting result.');
+            }
+        }
+
+        // Update popup button states
+        function updatePopupButtonStates() {
+            try {
+                results.forEach((value, index) => {
+                    const row = document.querySelector(`.result-row[data-index="${index}"]`);
+                    if (!row) return;
+                    const bigBtn = row.querySelector('.big-btn');
+                    const smallBtn = row.querySelector('.small-btn');
+                    if (!bigBtn || !smallBtn) return;
+                    bigBtn.classList.toggle('selected', value === 'big');
+                    smallBtn.classList.toggle('selected', value === 'small');
+                    bigBtn.setAttribute('aria-pressed', value === 'big' ? 'true' : 'false');
+                    smallBtn.setAttribute('aria-pressed', value === 'small' ? 'true' : 'false');
+                    row.offsetHeight;
+                });
+                logActivity('UI Update', `Button states: ${results}`);
+            } catch (e) {
+                console.error('Update button states error:', e);
+            }
+        }
+
+        // Results popup
+        function showResultsPopup() {
+            try {
+                playSound('menu');
+                const popup = document.createElement('div');
+                popup.className = 'popup center-popup';
+                popup.id = 'resultsPopup';
+                popup.innerHTML = `
+                    <p style="font-size: 18px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);">দয়া করে লাস্ট ৮ টি গেমের রেজাল্ট সিলেক্ট করে "Ai Prediction" চাপুন!</p>
+                    <div id="popupResults" role="region" aria-label="Result selection" style="background: rgba(255, 255, 255, 0.1); padding: 10px; border-radius: 8px;">
+                        ${Array.from({length: 8}, (_, i) => `
+                            <div class="result-row" data-index="${7 - i}" style="margin: 8px 0;">
+                                <button class="big-btn" onclick="selectResult(${7 - i}, 'big')" aria-label="Select Big for row ${8 - i}" aria-pressed="false">Big</button>
+                                <button class="small-btn" onclick="selectResult(${7 - i}, 'small')" aria-label="Select Small for row ${8 - i}" aria-pressed="false">Small</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="popup-content">
+                        <button onclick="submitResults(this)">Ai Prediction</button>
+                        <button onclick="closePopup(this)">বাদ দিন! </button>
+                    </div>
+                `;
+                document.body.appendChild(popup);
+                toggleBackgroundInteraction(true);
+                setTimeout(() => popup.classList.add('show'), 10);
+                const rows = popup.querySelectorAll('.result-row');
+                rows.forEach((row, index) => {
+                    setTimeout(() => row.classList.add('animate'), index * 100);
+                });
+                const firstButton = popup.querySelector('.big-btn');
+                if (firstButton) firstButton.focus();
+                updatePopupButtonStates();
+                logActivity('Popup', 'Showed results with 8 rows');
+            } catch (e) {
+                console.error('Show results popup error:', e);
+                alert('Error showing results popup.');
+            }
+        }
+
+        // Submit results
+        async function submitResults(button) {
+            try {
+                playSound('submit');
+                const errorDiv = document.getElementById('error');
+                const predictionDiv = document.getElementById('prediction');
+                const trackerDiv = document.getElementById('tracker');
+                const gameplayCounterDiv = document.getElementById('gameplayCounter');
+                const startBtn = document.getElementById('startBtn');
+                const outcomeButtons = document.getElementById('outcomeButtons');
+                if (!errorDiv || !predictionDiv || !trackerDiv || !gameplayCounterDiv || !startBtn || !outcomeButtons) {
+                    throw new Error('DOM elements missing');
+                }
+                errorDiv.style.display = 'none';
+                const validResults = results.filter(r => r === 'big' || r === 'small');
+                if (validResults.length !== 8) {
+                    showResultWarningPopup();
+                    return;
+                }
+                closePopup(button);
+                trackerDiv.classList.remove('hidden');
+                trackerDiv.classList.toggle('positive-benefit', benefit > 0);
+                trackerDiv.classList.toggle('negative-benefit', benefit < 0);
+                trackerDiv.innerText = `Benefit: ${benefit >= 0 ? '+' : ''}${benefit.toFixed(1)}৳`;
+                gameplayCounterDiv.classList.remove('hidden');
+                gameplayCounterDiv.innerText = `Total Games played: ${gameplayCount}`;
+                updateHistoryBar();
+                updateStatsLabels();
+                const betAmount = getBettingAmount();
+                lastBetAmount = betAmount;
+                const { prediction, confidence } = await getAIPrediction(validResults);
+                currentPredictionType = prediction;
+                predictionStreak = 1;
+                predictionDiv.innerHTML = `
+                    <div>🤜🏻𝗕𝗲𝘁 ${betAmount} 𝗧𝗞 𝗼𝗻 ${prediction.toLowerCase()} 🤛🏻</div>
+                    <div>🤜🏻 Chance ${confidence}%😎 🤛🏻</div>
+                `;
+                lastPrediction = prediction;
+                startBtn.classList.add('hidden');
+                outcomeButtons.classList.remove('hidden');
+                isPredicting = true;
+                saveState();
+                logActivity('Prediction', `Predicted ${prediction}, confidence ${confidence}%, bet ${betAmount} TK, streak=${predictionStreak}`);
+            } catch (e) {
+                console.error('Submit results error:', e);
+                alert('Error submitting results.');
+            }
+        }
+
+        // Statistical prediction
+        function getStatisticalPrediction(validResults) {
+            const lastTwo = validResults.slice(-2);
+            if (lastTwo.length === 2 && lastTwo.every(r => r === 'big')) {
+                logActivity('Pattern', 'Detected big streak in last 2');
+                return { prediction: 'Small', confidence: 85 };
+            }
+            if (lastTwo.length === 2 && lastTwo.every(r => r === 'small')) {
+                logActivity('Pattern', 'Detected small streak in last 2');
+                return { prediction: 'Big', confidence: 85 };
+            }
+
+            let streakCount = 1;
+            let lastResult = validResults[validResults.length - 1];
+            let streakType = lastResult;
+            for (let i = validResults.length - 2; i >= 0; i--) {
+                if (validResults[i] === lastResult) {
+                    streakCount++;
+                } else {
+                    break;
+                }
+            }
+
+            let isAlternating = true;
+            for (let i = 1; i < validResults.length; i++) {
+                if (validResults[i] === validResults[i - 1]) {
+                    isAlternating = false;
+                    break;
+                }
+            }
+
+            const bigCount = validResults.filter(r => r === 'big').length;
+            const smallCount = validResults.filter(r => r === 'small').length;
+            const total = validResults.length;
+            const bigRatio = bigCount / total;
+            const smallRatio = smallCount / total;
+
+            let prediction, confidence;
+
+            if (streakCount >= 3) {
+                prediction = streakType === 'big' ? 'Small' : 'Big';
+                confidence = Math.min(70 + streakCount * 5, 90);
+                logActivity('Pattern', `Streak of ${streakCount} ${streakType}s, predicting ${prediction}`);
+            } else if (isAlternating && validResults.length >= 4) {
+                prediction = validResults[validResults.length - 1] === 'big' ? 'Small' : 'Big';
+                confidence = 85;
+                logActivity('Pattern', `Alternating pattern detected, predicting ${prediction}`);
+            } else {
+                const recentWeight = 1.5;
+                let weightedBig = 0, weightedSmall = 0;
+                validResults.forEach((r, i) => {
+                    const weight = i >= validResults.length - 3 ? recentWeight : 1;
+                    if (r === 'big') weightedBig += weight;
+                    if (r === 'small') weightedSmall += weight;
+                });
+                prediction = weightedBig > weightedSmall ? 'Big' : weightedSmall > weightedBig ? 'Small' : validResults[validResults.length - 1] === 'big' ? 'Small' : 'Big';
+                confidence = Math.round(Math.max(bigRatio, smallRatio) * 100);
+                confidence = Math.max(60, Math.min(confidence, 80));
+                logActivity('Pattern', `Frequency-based: big=${bigRatio}, small=${smallRatio}, predicting ${prediction}`);
+            }
+
+            return { prediction, confidence };
+        }
+
+        // AI prediction
+        async function getAIPrediction(validResults) {
+            const lastTwo = validResults.slice(-2);
+            if (lastTwo.length === 2 && lastTwo.every(r => r === 'big')) {
+                logActivity('Pattern', 'AI override: big streak in last 2');
+                return { prediction: 'Small', confidence: 85 };
+            }
+            if (lastTwo.length === 2 && lastTwo.every(r => r === 'small')) {
+                logActivity('Pattern', 'AI override: small streak in last 2');
+                return { prediction: 'Big', confidence: 85 };
+            }
+            try {
+                const response = await fetch('http://localhost:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ results: validResults })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (!data.prediction || !['Big', 'Small'].includes(data.prediction)) {
+                    throw new Error('Invalid prediction');
+                }
+                const statConfidence = getStatisticalPrediction(validResults).confidence;
+                logActivity('AI Prediction', `API returned ${data.prediction}, using stat confidence ${statConfidence}%`);
+                return { prediction: data.prediction, confidence: statConfidence };
+            } catch (e) {
+                console.warn('AI API failed:', e);
+                logActivity('AI Prediction', `API failed, falling back to statistical prediction`);
+                return getStatisticalPrediction(validResults);
+            }
+        }
+
+        // Betting amount
+        function getBettingAmount() {
+            if (cumulativeLoss === 0) return 10;
+            let betAmount = Math.ceil((cumulativeLoss + 15) / 0.96);
+            if (cumulativeLoss === 10) betAmount = 21;
+            else if (cumulativeLoss === 60) betAmount = 92;
+            return betAmount;
+        }
+
+        // Start prediction
+        function startPrediction() {
+            playSound('start');
+            showResultsPopup();
+            logActivity('Prediction', 'Started');
+        }
+
+        // Track result
+        async function trackResult(type) {
+            try {
+                playSound(type);
+                const errorDiv = document.getElementById('error');
+                const predictionDiv = document.getElementById('prediction');
+                const trackerDiv = document.getElementById('tracker');
+                const gameplayCounterDiv = document.getElementById('gameplayCounter');
+                const startBtn = document.getElementById('startBtn');
+                const outcomeButtons = document.getElementById('outcomeButtons');
+                if (!errorDiv || !predictionDiv || !trackerDiv || !gameplayCounterDiv || !startBtn || !outcomeButtons) {
+                    throw new Error('DOM elements missing');
+                }
+                errorDiv.style.display = 'none';
+                if (isNaN(lastBetAmount) || lastBetAmount <= 0) {
+                    showResultWarningPopup();
+                    return;
+                }
+                outcomeHistory.push(type);
+                if (outcomeHistory.length > 8) outcomeHistory.shift();
+                gameplayCount++;
+                let prediction, confidence;
+
+                if (type === 'win') {
+                    benefit -= lastBetAmount;
+                    const winAmount = lastBetAmount * 1.96;
+                    benefit += winAmount;
+                    const profit = winAmount - lastBetAmount;
+                    consecutiveLosses = 0;
+                    cumulativeLoss = 0;
+                    predictionStreak = 0;
+                    currentPredictionType = null;
+                    if (lastPrediction) {
+                        results.shift();
+                        results.push(lastPrediction.toLowerCase());
+                        showCongratsPopup();
+                    }
+                    lifetimeWins++;
+                    lifetimeGamesWon++;
+                    lifetimeProfit += profit;
+                } else {
+                    benefit -= lastBetAmount;
+                    cumulativeLoss += lastBetAmount;
+                    consecutiveLosses++;
+                    lifetimeLosses++;
+                    lifetimeGamesLost++;
+                    if (lastPrediction) {
+                        const opposite = lastPrediction.toLowerCase() === 'big' ? 'small' : 'big';
+                        results.shift();
+                        results.push(opposite);
+                    }
+                    if (currentPredictionType && lastPrediction === currentPredictionType) {
+                        predictionStreak++;
+                    } else {
+                        predictionStreak = 1;
+                        currentPredictionType = lastPrediction;
+                    }
+                    logActivity('Prediction Streak', `Streak=${predictionStreak}, type=${currentPredictionType}`);
+                }
+
+                trackerDiv.classList.remove('positive-benefit', 'negative-benefit');
+                trackerDiv.classList.toggle('positive-benefit', benefit > 0);
+                trackerDiv.classList.toggle('negative-benefit', benefit < 0);
+                trackerDiv.innerText = `Benefit: ${benefit >= 0 ? '+' : ''}${benefit.toFixed(1)}৳`;
+                gameplayCounterDiv.classList.remove('hidden');
+                gameplayCounterDiv.innerText = `Total Games played: ${gameplayCount}`;
+                updateHistoryBar();
+                updateStatsLabels();
+                saveState();
+                const validResults = results.filter(r => r === 'big' || r === 'small');
+                if (validResults.length >= 8) {
+                    const newBetAmount = getBettingAmount();
+                    lastBetAmount = newBetAmount;
+                    if (type === 'loss' && predictionStreak >= 2) {
+                        prediction = currentPredictionType === 'Big' ? 'Small' : 'Big';
+                        confidence = 80;
+                        currentPredictionType = prediction;
+                        predictionStreak = 1;
+                        logActivity('Prediction Switch', `Switched to ${prediction} after ${predictionStreak} losses`);
+                    } else {
+                        const predResult = await getAIPrediction(validResults);
+                        prediction = predResult.prediction;
+                        confidence = predResult.confidence;
+                        if (prediction !== currentPredictionType) {
+                            predictionStreak = 1;
+                            currentPredictionType = prediction;
+                            logActivity('Prediction Change', `Natural change to ${prediction}, reset streak=1`);
+                        }
+                    }
+                    predictionDiv.innerHTML = `
+                        <div>🤜🏻𝗕𝗲𝘁 ${newBetAmount}  TK 𝗼𝗻 ${prediction.toLowerCase()} 🤛🏻</div>
+                        <div>🤜🏻 Chance ${confidence}%😎 🤛🏻</div>
+                    `;
+                    lastPrediction = prediction;
+                    isPredicting = true;
+                    updateHistoryBar();
+                    updateStatsLabels();
+                    saveState();
+                    logActivity('Predict', `Predicted ${prediction}, confidence ${confidence}%, bet ${newBetAmount} TK, streak=${predictionStreak}`);
+                } else {
+                    predictionDiv.innerText = 'Prediction: Please start a new prediction.';
+                    lastBetAmount = 0;
+                    startBtn.classList.remove('hidden');
+                    outcomeButtons.classList.add('hidden');
+                    isPredicting = false;
+                    predictionStreak = 0;
+                    currentPredictionType = null;
+                    updateStatsLabels();
+                }
+            } catch (e) {
+                console.error('Track result error:', e);
+                alert('Error tracking result.');
+            }
+        }
+
+        // Reset app
+        function resetApp() {
+            try {
+                results = Array(8).fill(null);
+                benefit = 0;
+                lastPrediction = null;
+                gameMode = '1M';
+                consecutiveLosses = 0;
+                lastBetAmount = 0;
+                cumulativeLoss = 0;
+                outcomeHistory = [];
+                isPredicting = false;
+                gameplayCount = 0;
+                predictionStreak = 0;
+                currentPredictionType = null;
+                lifetimeWins = 0;
+                lifetimeProfit = 0;
+                lifetimeGamesWon = 0;
+                lifetimeLosses = 0;
+                lifetimeGamesLost = 0;
+                const trackerDiv = document.getElementById('tracker');
+                const gameplayCounterDiv = document.getElementById('gameplayCounter');
+                const predictionDiv = document.getElementById('prediction');
+                const startBtn = document.getElementById('startBtn');
+                const outcomeButtons = document.getElementById('outcomeButtons');
+                if (trackerDiv) {
+                    trackerDiv.classList.add('hidden');
+                    trackerDiv.classList.remove('positive-benefit', 'negative-benefit');
+                    trackerDiv.innerText = 'Benefit: +0.0৳';
+                }
+                if (gameplayCounterDiv) {
+                    gameplayCounterDiv.classList.add('hidden');
+                    gameplayCounterDiv.innerText = 'Total Games played: 0';
+                }
+                if (predictionDiv) {
+                    predictionDiv.innerText = '🤖শুরু করতে "Start AI Prediction" চাপুন!';
+                }
+                if (startBtn) startBtn.classList.remove('hidden');
+                if (outcomeButtons) outcomeButtons.classList.add('hidden');
+                updateHistoryBar();
+                updateStatsLabels();
+                saveState();
+                logActivity('Reset', 'Reset all state including win/loss stats');
+            } catch (e) {
+                console.error('Reset error:', e);
+                alert('Error resetting app.');
+            }
+        }
+
+        // Update timer
+        function updateTimer() {
+            const timerDiv = document.getElementById('timer');
+            if (!timerDiv) return;
+            const now = new Date();
+            const seconds = now.getSeconds();
+            const timeLeft = gameDuration - (seconds % gameDuration);
+            if (timeLeft >= 11 && timeLeft <= 15) {
+                timerDiv.innerText = `${timeLeft} সেকেন্ড আছে তারতারি আপনার গেমে যান⚠️`;
+                timerDiv.classList.add('warning');
+            } else {
+                timerDiv.innerText = `Time: ${timeLeft}s`;
+                timerDiv.classList.remove('warning');
+            }
+        }
+
+        // Initialize UI
+        function initializeAppUI() {
+            try {
+                const trackerDiv = document.getElementById('tracker');
+                const gameplayCounterDiv = document.getElementById('gameplayCounter');
+                const outcomeButtons = document.getElementById('outcomeButtons');
+                if (trackerDiv) {
+                    trackerDiv.classList.add('hidden');
+                    if (isPredicting) {
+                        trackerDiv.classList.remove('hidden');
+                        trackerDiv.classList.toggle('positive-benefit', benefit > 0);
+                        trackerDiv.classList.toggle('negative-benefit', benefit < 0);
+                        trackerDiv.innerText = `Benefit: ${benefit >= 0 ? '+' : ''}${benefit.toFixed(1)}৳`;
+                    }
+                }
+                if (gameplayCounterDiv) {
+                    gameplayCounterDiv.classList.add('hidden');
+                    if (isPredicting) {
+                        gameplayCounterDiv.classList.remove('hidden');
+                        gameplayCounterDiv.innerText = `Total Games played: ${gameplayCount}`;
+                    }
+                }
+                if (outcomeButtons) outcomeButtons.classList.add('hidden');
+                const titleDiv = document.getElementById('gameTitle');
+                if (titleDiv) titleDiv.innerText = `Win-Go ${gameMode === '30S' ? '30 Second' : '1 Minute'}`;
+                updateHistoryBar();
+                updateStatsLabels();
+                logActivity('Initialize', `Loaded: results=${results}, benefit=${benefit}, cumulativeLoss=${cumulativeLoss}, gameplayCount=${gameplayCount}, predictionStreak=${predictionStreak}, currentPredictionType=${currentPredictionType}, lifetimeWins=${lifetimeWins}, lifetimeProfit=${lifetimeProfit}, lifetimeGamesWon=${lifetimeGamesWon}, lifetimeLosses=${lifetimeLosses}, lifetimeGamesLost=${lifetimeGamesLost}`);
+            } catch (e) {
+                console.error('UI init error:', e);
+                resetApp();
+            }
+        }
+
+        // Initialize app
+        function initializeApp() {
+            try {
+                const welcomeShown = localStorage.getItem('welcomeShown');
+                if (!welcomeShown) {
+                    showWelcomePopup();
+                } else {
+                    showMainScreen();
+                }
+                setInterval(updateTimer, 1000);
+                updateTimer();
+            } catch (e) {
+                console.error('App init error:', e);
+                alert('Error initializing app.');
+            }
+        }
+
+        // Run initialization
+        initializeApp();
+    </script>
+</body>
+</html>
